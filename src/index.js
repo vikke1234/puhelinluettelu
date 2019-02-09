@@ -5,6 +5,7 @@ const morgan = require("morgan")
 const cors = require("cors")
 
 const app = express()
+
 let persons = [
     {
       "name": "Arto Hellas",
@@ -37,6 +38,7 @@ morgan.token("content", req => {
 app.use(bodyParser.json())
 app.use(morgan(":method :url - - :response-time ms :content"))
 app.use(cors())
+app.use(express.static('../build')
 
 app.get("/persons/:id", (req, res) => {
   const id = Number(req.params.id)
