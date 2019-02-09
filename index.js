@@ -38,7 +38,7 @@ morgan.token("content", req => {
 app.use(bodyParser.json())
 app.use(morgan(":method :url - - :response-time ms :content"))
 app.use(cors())
-app.use(express.static('../build'))
+app.use(express.static('build'))
 
 app.get("/persons/:id", (req, res) => {
   const id = Number(req.params.id)
