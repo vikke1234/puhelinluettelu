@@ -7,28 +7,6 @@ const Person = require("./models/person")
 
 const app = express()
 
-let persons = [
-  {
-    name: "Arto Hellas",
-    number: "040-123456",
-    id: 1
-  },
-  {
-    name: "Martti Tienari",
-    number: "040-123456",
-    id: 2
-  },
-  {
-    name: "Arto Järvinen",
-    number: "040-123456",
-    id: 3
-  },
-  {
-    name: "Lea Kutvonen",
-    number: "040-123456",
-    id: 4
-  }
-]
 morgan.token("content", req => {
   if (req.method === "POST") {
     const body = req.body
@@ -41,7 +19,9 @@ const errorHandler = (error, request, response, next) => {
 
   if (error.name === 'CastError' && error.kind == 'ObjectId') {
     return response.status(400).send({ error: 'malformatted id' })
-  } 
+  } else if (error.name === 'ValidationError') {
+    return response.status(400).json({error: error.message})
+  }
 
   next(error)
 }
@@ -78,7 +58,10 @@ app.post("/api/persons", (request, response) => {
       error: "content missing"
     })
   }
-  console.log(body)
+  if (body.name.length < 3 || body.number.length < 8) {
+    return response.status(400).end()
+  }
+    console.log(body)
   Person.findOne({ name: body.name }, (err, results) => {
     if (err) {
       console.log(err)

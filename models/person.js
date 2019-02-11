@@ -1,20 +1,25 @@
-const mongoose = require('mongoose')
-mongoose.set('useFindAndModify', false)
+const mongoose = require("mongoose")
+const uniqueValidator = require("mongoose-unique-validator")
+
+mongoose.set("useFindAndModify", false)
 
 const url = process.env.MONGO_URI
-console.log('connecting to: ', url)
+console.log("connecting to: ", url)
 
-mongoose.connect(url, { useNewUrlParser: true }).then(respones => {
-  console.log('successefully connected')
-}).catch(response => {
-  console.log('error connecting to mongo: ', response.message)
-})
+mongoose
+  .connect(url, { useNewUrlParser: true })
+  .then(respones => {
+    console.log("successefully connected")
+  })
+  .catch(err => {
+    console.log("error connecting to mongo: ", err.message)
+  })
 
 const phoneSchema = new mongoose.Schema({
-  name: String,
-  number: String
+  name: { type: String, required: true, unique: true },
+  number: { type: String, required: true }
 })
-phoneSchema.set('toJSON', {
+phoneSchema.set("toJSON", {
   transform: (document, returnedObject) => {
     returnedObject.id = returnedObject._id.toString()
     delete returnedObject._id
