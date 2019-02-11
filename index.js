@@ -1,101 +1,136 @@
-const http = require("http")
+require("dotenv").config()
 const express = require("express")
 const bodyParser = require("body-parser")
 const morgan = require("morgan")
 const cors = require("cors")
+const Person = require("./models/person")
 
 const app = express()
 
 let persons = [
-    {
-      "name": "Arto Hellas",
-      "number": "040-123456",
-      "id": 1
-    },
-    {
-      "name": "Martti Tienari",
-      "number": "040-123456",
-      "id": 2
-    },
-    {
-      "name": "Arto Järvinen",
-      "number": "040-123456",
-      "id": 3
-    },
-    {
-      "name": "Lea Kutvonen",
-      "number": "040-123456",
-      "id": 4
-    }
-  ]
+  {
+    name: "Arto Hellas",
+    number: "040-123456",
+    id: 1
+  },
+  {
+    name: "Martti Tienari",
+    number: "040-123456",
+    id: 2
+  },
+  {
+    name: "Arto Järvinen",
+    number: "040-123456",
+    id: 3
+  },
+  {
+    name: "Lea Kutvonen",
+    number: "040-123456",
+    id: 4
+  }
+]
 morgan.token("content", req => {
   if (req.method === "POST") {
     const body = req.body
     return JSON.stringify(body)
   }
-  return ' '
+  return " "
 })
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError' && error.kind == 'ObjectId') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } 
+
+  next(error)
+}
+
+app.use(errorHandler)
 app.use(bodyParser.json())
 app.use(morgan(":method :url - - :response-time ms :content"))
 app.use(cors())
-app.use(express.static('build'))
+app.use(express.static("build"))
 
-app.get("/persons/:id", (req, res) => {
-  const id = Number(req.params.id)
-  console.log(id)
-  const person = persons.find(p => p.id === id)
-  console.log(person)
-  res.json(person)
+app.get("/api/persons/:id", (request, response) => {
+  Person.findById(request.params.id).then(person => {
+    if (person) {
+      response.json(person.toJSON())
+    } else {
+      response.status(404).end()
+    }
+  }).catch(err =>{
+    console.log(err.message)
+    response.status(400).end()
+  })
 })
 
-app.get("/persons", (req, res) => {
-  res.json(persons)
+app.get("/api/persons", (req, res) => {
+  Person.find({}).then(people => {
+    res.json(people)
+  })
 })
 
-const generateId = () => {
-  const maxId =
-    persons.length > 0 ? Math.max(...persons.map(person => person.id)) : 0
-  return maxId + 1
-}
-
-app.post("/persons", (request, response) => {
+app.post("/api/persons", (request, response) => {
   const body = request.body
   if (body === undefined) {
     return response.status(400).json({
       error: "content missing"
     })
   }
-
-  if (persons.find(person => person.name === body.name) === undefined) {
-    const person = {
-      name: body.name,
-      number: body.number,
-      id: generateId()
+  console.log(body)
+  Person.findOne({ name: body.name }, (err, results) => {
+    if (err) {
+      console.log(err)
     }
 
-    persons.push(person)
-    response.json(person)
-  } else {
-    response.status(403).json({
-      error: "name must be unique"
-    })
+    if (!results) {
+      const person = new Person({
+        name: body.name,
+        number: body.number,
+      })
+      person
+        .save()
+        .then(res => {
+          response.json(person)
+        })
+        .catch(err => console.log(err.message))
+    } else {
+      response.status(403).json({
+        error: "name must be unique"
+      })
+    }
+  })
+})
+
+app.put('/api/persons/:id', (request, response) => {
+  let body = request.body
+  if(!body) {
+    console.log('error no content')
+    response.status(204).end()
   }
+  const person = {
+    name: body.name,
+    number: body.number
+  }
+  Person.findByIdAndUpdate(request.params.id, person, {new: true}).then(updated_person => {
+    response.json(updated_person.toJSON())
+  }).catch(err => console.log(err.message))
 })
-
 app.get("/info", (request, response) => {
-  const people = persons.length
-  const date = Date.now()
-  response.end("puhelin luettelussa on " + people + " henkilöä\n" + date)
+  const people = Person.find({}).then(people => {
+    const date = Date.now()
+    response.end("puhelin luettelussa on " + people.length + " henkilöä\n" + date)
+  })
 })
 
-app.delete("/persons/:id", (request, response) => {
-  const id = Number(request.params.id)
-  persons = persons.filter(p => p.id !== id)
-  response.status(204).end()
+app.delete("/api/persons/:id", (request, response) => {
+  Person.findByIdAndRemove({_id: request.params.id}).then(result => {
+    response.status(204).end()
+  }).catch(err => console.log(err.message))
 })
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
-  console.log(persons)
   console.log(`listening on ${PORT}`)
 })
